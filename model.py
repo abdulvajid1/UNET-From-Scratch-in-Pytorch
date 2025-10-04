@@ -1,10 +1,14 @@
+from pyexpat import model
 import torch
 from torch import Tensor
 import torch.nn as nn
 from torchvision.transforms import Resize 
+from torch.nn.functional import binary_cross_entropy_with_logits
+from torchvision.transforms.transforms import CenterCrop
+
 
 class UnetConv(nn.Module):
-    def __init__(self, in_channels, out_channels, padding=0, stride=1):
+    def __init__(self, in_channels, out_channels, padding=1, stride=1):
         super().__init__()
 
         self.conv_layer  = nn.Sequential(
@@ -21,11 +25,10 @@ class UnetConv(nn.Module):
     
 
 class UNET(nn.Module):
-    def __init__(self, features=[64, 128, 256, 512]):
+    def __init__(self, in_channels=3, features=[64, 128, 256, 512]):
         super().__init__()
         self.conv_downs = nn.ModuleList()
-        self.conv_ups = nn.ModuleList()
-        in_channels = 1
+        self.conv_ups = nn.ModuleList() 
 
         # Module list U down part
         for out_channels in features:
@@ -51,7 +54,7 @@ class UNET(nn.Module):
             nn.LeakyReLU()
         )
     
-    def forward(self, x: Tensor):
+    def forward(self, x: Tensor, target=None):
         out_features = []
 
         for module in self.conv_downs:
@@ -66,24 +69,27 @@ class UNET(nn.Module):
         for module in self.conv_ups:
             # resize out_feature value to x same shape
             if isinstance(module, UnetConv):
-                height, width = x.shape[-2], x.shape[-1]
-                resized_features = Resize((height, width))(out_features[i])
-                i+=1
-                assert x.shape[1] == resized_features.shape[1] and x.shape[-1] == resized_features.shape[-1], "size should match"
-                x = torch.concat([x, resized_features], dim=1)    
+                x = torch.concat([x, out_features[i]], dim=1)
+                i+=1    
             x = module(x)
+    
+        model_out = self.output_layer(x)
+        loss = None
 
-        return self.output_layer(x)
+        if target:
+            loss = binary_cross_entropy_with_logits(model_out, target)
+
+        return model_out, loss
                 
 
 def main():
-    x = torch.rand((1, 1, 572, 572))
-    conv = UnetConv(1, 64)
+    x = torch.rand((1, 3, 256, 256))
+    conv = UnetConv(in_channels=3, out_channels=64) # 3 channel
     print(f"UnetConv{x.shape} -> unet_conv -> {conv(x).size()}")
 
-    model = UNET()
+    model = UNET(in_channels=3)
 
-    print(f"UNET MODEL {x.size()} -> model(x) -> {model(x).size()}")
+    print(f"UNET MODEL {x.size()} -> model(x) -> {model(x)[0].size()}")
 
 
 if __name__ == '__main__':
