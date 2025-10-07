@@ -50,7 +50,7 @@ class UNET(nn.Module):
         )
 
         self.output_layer = nn.Sequential(
-            nn.Conv2d(in_channels=features[0], out_channels=1, kernel_size=1, stride=1),
+            nn.Conv2d(in_channels=features[0], out_channels=3, kernel_size=1, stride=1),
             nn.LeakyReLU()
         )
     
@@ -76,7 +76,7 @@ class UNET(nn.Module):
         model_out = self.output_layer(x)
         loss = None
 
-        if target:
+        if target is not None:
             loss = binary_cross_entropy_with_logits(model_out, target)
 
         return model_out, loss

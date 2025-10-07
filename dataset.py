@@ -7,11 +7,9 @@ class ImgDataset(Dataset):
     def __init__(self, path, transform=None):
         super().__init__()
         self.path = Path(path)
-        self.images =  (self.path).glob("img/*.png")
-        self.labels = (self.path).glob("label/*.png")
-
+        self.images =  list((self.path).glob("img/*.png"))
+        self.labels = list((self.path).glob("label/*.png"))
         self.transform = transform
-
 
     def __len__(self):
         return len(self.images)
@@ -23,8 +21,8 @@ class ImgDataset(Dataset):
         label = np.array(Image.open(label_path).convert("RGB"))
 
         if self.transform is not None:
-            augmentation = self.transform(image=image, label=label)
-            image, label = augmentation['image'], augmentation['label']
+            augmentation = self.transform(image=image, image1=label)
+            image, label = augmentation['image'], augmentation['image1']
         
         return image, label 
 
